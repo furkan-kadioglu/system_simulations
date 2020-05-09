@@ -41,22 +41,25 @@ hist(data[,2], xlab='Day 2 for 10 secs', xlim=c(0,400), breaks=400/10)
 hist(data[,2], xlab='Day 2 for 20 secs', xlim=c(0,400), breaks=400/20)
 
 #----------------------4 Chi-Square Test---------------------------#
-# Problems with task 4
-# 1- E.frequency length is smaller than O.frequency.
-# 2- number of samples expectations for some intervals is 0 
-# so inf and nan value are possible.
-# 3- degree of freedom for 488 - 1 = 477 has to be calculated.
-
+frequency = function (x) {
+    x.mean = mean(data[,2])
+    pexp(x+10, rate=1/x.mean) - pexp(x, rate=1/x.mean)
+}
 
 chi_square_test = function(O, interval = 10){
     N = length(O)
-    E = rexp(n=N, rate=(1/mean(O)))
-    O.frequency = hist(O, breaks=400/interval)$count
-    E.frequency = hist(E, breaks=400/interval)$count
+    O.hist = hist(O, breaks=400/interval)
+    end = O.hist$breaks[length(O.hist$breaks)-1] / interval 
+    O.frequency = O.hist$count
 
-    diff = O.frequency[1:length(E.frequency)] - E.frequency
+    E.frequency = unlist(lapply(0:end * interval, frequency)) * N
+
+    diff = O.frequency - E.frequency
     X = sum(((diff)**2) / E.frequency)
-    print(X < 553.127) # degree of freedom 500
+
+    print(X)
+    print(X < 48.602)  # day 2
+    #print(X < 60.481)  # day 1
 }
 
 #----------------------5 QQ Plot----------------------------------#
@@ -70,7 +73,7 @@ qq_plot = function(x){
 
 #--------------6 inter-arrival vs observation times---------------#
 plot_inter = function(x){
-    plot(cumsum(x), x)
+    plot(cumsum(x), x, type="h")
 }
 
 
