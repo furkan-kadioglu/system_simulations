@@ -5,6 +5,9 @@
 library("xlsx")
 data <- read.xlsx("Assignment2-Interarrival_Data-S2020.xls",
                  sheetIndex = 1)
+day1=data[,1]
+day2=data[,2]
+
     
 #------------------------1 Kolmogorov-Smirnovtest-------------------#
 uniformity_test = function(x){
@@ -79,3 +82,15 @@ plot_inter = function(x){
 
 #------------------------7 Auto correlation-----------------------#
 
+autocorrelation = function(arr, lag){
+    arr.length = length(arr)
+    arr = unlist(lapply(arr, function(k){pexp(k, rate=1/mean(arr))})) # Convert to U[0, 1] distribution
+    M = floor((arr.length-1)/lag-1)
+    ro = sum(unlist(lapply(0:M, function(k){arr[1+k*lag]*arr[1+(k+1)*lag]})))/(M+1)-0.25
+    sigma = sqrt(13*M+7)/(12*(M+1))
+    z0 = ro/sigma
+    if (z0 >= -1.96 && z0 <= 1.96)
+        sprintf("Data seems independent at alpha=0.05. |%f|<1.96", z0)
+    else
+        sprintf("Data seems not independent at alpha=0.05. |%f|>1.96", z0)
+}
