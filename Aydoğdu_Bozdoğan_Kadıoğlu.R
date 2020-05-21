@@ -1,7 +1,9 @@
 # Install packages
 #install.packages("xlsx")
+#install.packages("TTR")
 
 # Load Data
+library("TTR") # This package is used to calculate Simple Moving Average.
 library("xlsx") # This package is used to read data from .xls file.
 data <- read.xlsx("Assignment2-Interarrival_Data-S2020.xls",
                  sheetIndex = 1)
@@ -19,12 +21,15 @@ uniformity_test = function(x){
     D.minus = max(x - ((1:x.length - 1) / x.length))
     D = max(D.minus, D.plus)
 
-    print(D)
-    print(1.36 / sqrt(x.length))
-    print(D < (1.36 / sqrt(x.length)))
+    message("D value is ", D, ".")
+    if(D < (1.36 / sqrt(x.length))) {
+        cat("The hypothesis that the data is uniformly distributed cannot be rejected.\n")
+    } else {
+        cat("The hypothesis that the data is uniformly distributed is rejected.\n")
+    }
+    
 }
-#uniformity_test(day1)
-#uniformity_test(day2)
+
 
 #-------------------------2 Sample Statistics-----------------------#
 append = function(x,y) {
@@ -49,8 +54,12 @@ hist(data[,2], xlab='Day 2 for 10 secs', xlim=c(0,400), breaks=400/10)
 hist(data[,2], xlab='Day 2 for 20 secs', xlim=c(0,400), breaks=400/20)
 
 #----------------------4 Chi-Square Test---------------------------#
-frequency = function (x) {
-    #x.mean = mean(data[,1]) # day 1
+frequency1 = function (x) {
+    x.mean = mean(data[,1]) # day 1
+    pexp(x+10, rate=1/x.mean) - pexp(x, rate=1/x.mean)
+}
+
+frequency2 = function (x) {
     x.mean = mean(data[,2]) # day 2
     pexp(x+10, rate=1/x.mean) - pexp(x, rate=1/x.mean)
 }
@@ -61,19 +70,31 @@ chi_square_test = function(O, interval = 10){
     end = O.hist$breaks[length(O.hist$breaks)-1] / interval 
     O.frequency = O.hist$count
 
-    E.frequency = unlist(lapply(0:end * interval, frequency)) * N
-
+    if(identical(O,day1)) {
+        E.frequency = unlist(lapply(0:end * interval, frequency1)) * N
+    } else if (identical(O,day2)) {
+        E.frequency = unlist(lapply(0:end * interval, frequency2)) * N
+    }
 
     diff = O.frequency - E.frequency
     X = sum(((diff)**2) / E.frequency)
 
-    print(X)
-    #print(X < 58.142)  # day 1
-    print(X < 46.194)  # day 2
-}
+    message("Chi-Square value is ", X, ".")
 
-#chi_square_test(day1)
-#chi_square_test(day2)
+    if(identical(O,day1)) {
+        if(X < 58.142) {
+            cat("The hypothesis that the data is exponentially distributed cannot be rejected.\n")
+        } else {
+            cat("The hypothesis that the data is exponentially distributed is rejected.\n")
+        }
+    } else if (identical(O,day2)) {
+        if(X < 46.194) {
+            cat("The hypothesis that the data is exponentially distributed cannot be rejected.\n")
+        } else {
+            cat("The hypothesis that the data is exponentially distributed is rejected.\n")
+        }
+    }
+}
 
 #----------------------5 QQ Plot----------------------------------#
 
@@ -86,17 +107,12 @@ qq_plot = function(x){
     lines(x,a)
 }
 
-#qq_plot(day1)
-#qq_plot(day2)
-
 
 #--------------6 inter-arrival vs observation times---------------#
 plot_inter = function(x){
-    plot(cumsum(x), x, type="h", xlab="Observation Times", ylab="Interarrival Times")
+    sma = SMA(x, n = 50)
+    plot(cumsum(x), sma, type="l", xlab="Observation Times", ylab="Simple Moving Average")
 }
-
-#plot_inter(day1)
-#plot_inter(day2)
 
 #------------------------7 Auto correlation-----------------------#
 
@@ -106,13 +122,38 @@ autocorrelation = function(arr, lag){
     M = floor((arr.length-1)/lag-1)
     ro = sum(unlist(lapply(0:M, function(k){arr[1+k*lag]*arr[1+(k+1)*lag]})))/(M+1)-0.25
     sigma = sqrt(13*M+7)/(12*(M+1))
+    message("Correlation is ", ro, ".")
     z0 = ro/sigma
     if (z0 >= -1.96 && z0 <= 1.96) 
-        sprintf("Data seems independent at alpha=0.05. |%f|<1.96", z0)
+        sprintf("Data seems independent at alpha=0.05 when the lag is %d. |%f|<1.96", lag, z0)
     else
-        sprintf("Data seems not independent at alpha=0.05. |%f|>1.96", z0)
+        sprintf("Data seems not independent at alpha=0.05 when the lag is %d. |%f|>1.96", lag, z0)
 }
 
-#autocorrelation(day1)
-#autocorrelation(day2)
 
+cat("Kolmogorov-Smirnov Test:\n")
+cat("Day 1:\n")
+uniformity_test(day1)
+cat("Day 2:\n")
+uniformity_test(day2)
+
+cat("\nSample Statistics:\n")
+print(statistics)
+
+cat("\nChi-Square Test:\n")
+cat("Day 1:\n")
+chi_square_test(day1)
+cat("Day 2:\n")
+chi_square_test(day2)
+
+qq_plot(day1)
+qq_plot(day2)
+
+plot_inter(day1)
+plot_inter(day2)
+
+cat("\nAutocorrelation:\n")
+cat("Day 1:\n")
+autocorrelation(day1, 2)
+cat("Day 2:\n")
+autocorrelation(day2, 2)
